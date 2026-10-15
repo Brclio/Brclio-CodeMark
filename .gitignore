@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# Django/runtime
+db.sqlite3
+*.sqlite3
+logs/*
+!logs/.gitkeep
+media/*
+!media/.gitkeep
+sharecode/
+staticfiles/
+
+# Local environment
+.env
+.env.*
+!.env.example
+!.env.example.en
+
+# IDE/editor
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+
+# Test/cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Codex/local assistant state
+.claude/
+.playwright-cli/

@@ -1,0 +1,57 @@
+{% for node in tree.children %}
+    <li class="article-sidebar-admin-node is-{{ node.node_type }}{% if node.is_hidden %} is-hidden{% endif %}"
+        data-sidebar-admin-item
+        data-path="{{ node.path }}"
+        data-node-type="{{ node.node_type }}"
+        data-parent-path="{{ node.parent_path }}"
+        data-hidden="{% if node.is_hidden %}true{% else %}false{% endif %}"
+        draggable="true">
+        <div class="article-sidebar-admin-row">
+            <span class="article-sidebar-drag-handle"
+                  data-drag-handle
+                  role="button"
+                  tabindex="0"
+                  title="拖动排序"
+                  aria-label="拖动排序">::</span>
+            <span class="article-sidebar-node-type">
+                {% if node.node_type == "file" %}文章{% else %}目录{% endif %}
+            </span>
+            <div class="article-sidebar-title-field">
+                <input class="article-sidebar-title-input"
+                       type="text"
+                       value="{{ node.title }}"
+                       placeholder="{{ node.default_title }}"
+                       data-title-input
+                       data-default-title="{{ node.default_title }}"
+                       aria-label="{{ node.path }} 标题">
+                <span class="article-sidebar-default-title">默认：{{ node.default_title }}</span>
+            </div>
+            <div class="article-sidebar-row-actions">
+                <button class="article-sidebar-node-button article-sidebar-node-button-muted" type="button" data-reset-title title="恢复默认标题">默认</button>
+                <button class="article-sidebar-node-button article-sidebar-node-button-hidden"
+                        type="button"
+                        data-toggle-hidden
+                        aria-pressed="{% if node.is_hidden %}true{% else %}false{% endif %}"
+                        title="{% if node.is_hidden %}显示此节点{% else %}隐藏此节点{% endif %}">
+                    {% if node.is_hidden %}显示{% else %}隐藏{% endif %}
+                </button>
+                <button class="article-sidebar-node-button article-sidebar-node-button-icon" type="button" data-move-item="up" title="上移" aria-label="上移">↑</button>
+                <button class="article-sidebar-node-button article-sidebar-node-button-icon" type="button" data-move-item="down" title="下移" aria-label="下移">↓</button>
+                {% if node.node_type == "file" %}
+                    <a class="article-sidebar-node-button article-sidebar-node-button-preview"
+                       href="/article/{{ node.path }}"
+                       target="_blank"
+                       rel="noopener"
+                       title="预览文章">预览</a>
+                {% endif %}
+            </div>
+            <span class="article-sidebar-node-path" title="{{ node.path }}">{{ node.path }}</span>
+        </div>
+        <ol class="article-sidebar-admin-list"
+            data-sidebar-admin-list
+            data-parent-path="{{ node.path }}"
+            {% if not node.tree.children %}data-empty-child-list{% endif %}>
+            {% include "admin/_article_sidebar_tree.html" with tree=node.tree %}
+        </ol>
+    </li>
+{% endfor %}

@@ -1,0 +1,1277 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+    .article-sidebar-admin-shell {
+        display: grid;
+        gap: 10px;
+        width: min(100%, 1480px);
+    }
+
+    .article-sidebar-admin-toolbar,
+    .article-sidebar-admin-editor {
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--body-bg);
+    }
+
+    .article-sidebar-admin-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-height: 48px;
+        padding: 10px 12px;
+    }
+
+    .article-sidebar-admin-kicker {
+        margin: 0;
+        color: var(--body-quiet-color);
+        font-size: 11px;
+        letter-spacing: 0;
+    }
+
+    .article-sidebar-admin-title {
+        margin: 2px 0 0;
+        color: var(--body-fg);
+        font-size: 17px;
+        font-weight: 600;
+        line-height: 1.25;
+    }
+
+    .article-sidebar-admin-summary {
+        margin-top: 3px;
+        color: var(--body-quiet-color);
+        font-size: 12px;
+        line-height: 1.35;
+    }
+
+    .article-sidebar-admin-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .article-sidebar-button,
+    .article-sidebar-card-action,
+    .article-sidebar-node-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        min-width: 0;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--body-bg);
+        color: var(--body-fg);
+        box-shadow: none;
+        font-family: inherit;
+        font-weight: 600;
+        letter-spacing: 0;
+        line-height: 1;
+        text-decoration: none;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, box-shadow 0.14s ease;
+        appearance: none;
+    }
+
+    .article-sidebar-button {
+        height: 30px;
+        padding: 0 11px;
+        font-size: 12px;
+    }
+
+    .article-sidebar-button-primary {
+        color: #fff;
+        background: var(--link-fg);
+        border-color: var(--link-fg);
+    }
+
+    .article-sidebar-button-secondary {
+        color: var(--link-fg);
+        background: color-mix(in srgb, var(--link-fg) 8%, var(--body-bg));
+        border-color: color-mix(in srgb, var(--link-fg) 22%, var(--border-color));
+    }
+
+    .article-sidebar-button-plain {
+        color: var(--body-quiet-color);
+        background: var(--body-bg);
+    }
+
+    .article-sidebar-button-danger {
+        color: #8a3a24;
+        background: #fff8f4;
+        border-color: #e4b49f;
+    }
+
+    .article-sidebar-button:hover,
+    .article-sidebar-card-action:hover,
+    .article-sidebar-node-button:hover {
+        color: #fff;
+        background: var(--link-fg);
+        border-color: var(--link-fg);
+        text-decoration: none;
+    }
+
+    .article-sidebar-button-danger:hover {
+        color: #fff;
+        background: #9b3d24;
+        border-color: #9b3d24;
+    }
+
+    .article-sidebar-button:disabled,
+    .article-sidebar-node-button:disabled {
+        color: var(--body-quiet-color);
+        background: color-mix(in srgb, var(--darkened-bg) 72%, var(--body-bg));
+        border-color: var(--border-color);
+        box-shadow: none;
+        cursor: not-allowed;
+        opacity: 0.58;
+    }
+
+    .article-sidebar-button:disabled:hover,
+    .article-sidebar-node-button:disabled:hover {
+        color: var(--body-quiet-color);
+        background: color-mix(in srgb, var(--darkened-bg) 72%, var(--body-bg));
+        border-color: var(--border-color);
+    }
+
+    .article-sidebar-button:focus-visible,
+    .article-sidebar-card-action:focus-visible,
+    .article-sidebar-node-button:focus-visible {
+        outline: 0;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--link-fg) 24%, transparent);
+    }
+
+    .article-sidebar-collection-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 8px;
+    }
+
+    .article-sidebar-collection-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px 12px;
+        align-items: center;
+        min-height: 74px;
+        padding: 10px 12px;
+        color: var(--body-fg);
+        text-decoration: none;
+        background: var(--body-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .article-sidebar-collection-card:hover {
+        border-color: var(--link-fg);
+        background: var(--darkened-bg);
+    }
+
+    .article-sidebar-collection-card.is-hidden {
+        color: var(--body-quiet-color);
+        background: color-mix(in srgb, var(--darkened-bg) 78%, var(--body-bg));
+        border-style: dashed;
+    }
+
+    .article-sidebar-collection-card.is-hidden:hover {
+        color: var(--body-fg);
+        background: color-mix(in srgb, var(--darkened-bg) 88%, var(--body-bg));
+    }
+
+    .article-sidebar-collection-card h3 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.25;
+    }
+
+    .article-sidebar-collection-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 6px;
+        color: var(--body-quiet-color);
+        font-size: 11px;
+    }
+
+    .article-sidebar-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 20px;
+        padding: 1px 7px;
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        background: var(--darkened-bg);
+    }
+
+    .article-sidebar-pill-hidden {
+        color: #7a5a44;
+        background: #f6eee8;
+        border-color: #d8c5b7;
+    }
+
+    .article-sidebar-collection-path,
+    .article-sidebar-node-path {
+        color: var(--body-quiet-color);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 11px;
+        line-height: 1.3;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .article-sidebar-collection-path {
+        grid-column: 1 / -1;
+        word-break: break-all;
+    }
+
+    .article-sidebar-card-action {
+        height: 28px;
+        padding: 0 10px;
+        color: var(--link-fg);
+        background: color-mix(in srgb, var(--link-fg) 7%, var(--body-bg));
+        border-color: color-mix(in srgb, var(--link-fg) 22%, var(--border-color));
+        font-size: 12px;
+    }
+
+    .article-sidebar-admin-editor {
+        overflow: hidden;
+    }
+
+    .article-sidebar-editor-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        min-height: 48px;
+        padding: 9px 12px;
+        background: color-mix(in srgb, var(--darkened-bg) 82%, var(--body-bg));
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .article-sidebar-editor-head h2 {
+        margin: 0;
+        color: var(--body-fg);
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .article-sidebar-editor-body {
+        display: grid;
+        gap: 8px;
+        padding: 10px;
+        background: color-mix(in srgb, var(--darkened-bg) 35%, var(--body-bg));
+    }
+
+    .article-sidebar-admin-list {
+        display: grid;
+        gap: 0;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        background: var(--body-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+
+    .article-sidebar-admin-list .article-sidebar-admin-list {
+        margin: 0 0 0 26px;
+        border-top: 1px solid var(--hairline-color);
+        border-right: 0;
+        border-bottom: 0;
+        border-left: 2px solid var(--hairline-color);
+        border-radius: 0;
+    }
+
+    .article-sidebar-admin-list .article-sidebar-admin-list[data-empty-child-list] {
+        display: none;
+    }
+
+    .article-sidebar-admin-node {
+        display: grid;
+        gap: 0;
+    }
+
+    .article-sidebar-admin-node.is-dragging {
+        opacity: 0.5;
+    }
+
+    .article-sidebar-admin-node.is-hidden > .article-sidebar-admin-row,
+    .article-sidebar-collection-root-row.is-hidden {
+        color: var(--body-quiet-color);
+        background: color-mix(in srgb, var(--darkened-bg) 78%, var(--body-bg));
+    }
+
+    .article-sidebar-admin-node.is-inherited-hidden > .article-sidebar-admin-row {
+        background: color-mix(in srgb, var(--darkened-bg) 88%, var(--body-bg));
+    }
+
+    .article-sidebar-admin-node.is-hidden > .article-sidebar-admin-row .article-sidebar-title-input,
+    .article-sidebar-collection-root-row.is-hidden .article-sidebar-title-input {
+        color: var(--body-quiet-color);
+        background: color-mix(in srgb, var(--darkened-bg) 78%, var(--body-bg));
+        border-color: var(--hairline-color);
+    }
+
+    .article-sidebar-admin-node.is-hidden > .article-sidebar-admin-row .article-sidebar-drag-handle {
+        cursor: not-allowed;
+        opacity: 0.55;
+    }
+
+    .article-sidebar-admin-node.is-hidden > .article-sidebar-admin-row .article-sidebar-node-path,
+    .article-sidebar-collection-root-row.is-hidden .article-sidebar-node-path {
+        color: color-mix(in srgb, var(--body-quiet-color) 76%, var(--body-bg));
+    }
+
+    .article-sidebar-admin-row,
+    .article-sidebar-collection-root-row {
+        display: grid;
+        grid-template-columns: 28px 48px minmax(240px, 1fr) auto minmax(160px, 0.36fr);
+        gap: 8px;
+        align-items: center;
+        min-height: 38px;
+        padding: 6px 8px;
+        background: var(--body-bg);
+        border: 0;
+        border-bottom: 1px solid var(--hairline-color);
+    }
+
+    .article-sidebar-collection-root-row {
+        grid-template-columns: 48px minmax(240px, 1fr) auto minmax(180px, 0.45fr);
+        background: var(--body-bg);
+        border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border-color));
+        border-radius: 6px;
+    }
+
+    .article-sidebar-admin-row.is-drop-target {
+        background: color-mix(in srgb, var(--link-fg) 8%, var(--body-bg));
+        box-shadow: inset 3px 0 0 var(--link-fg);
+    }
+
+    .article-sidebar-admin-list.is-drop-list {
+        outline: 2px solid color-mix(in srgb, var(--link-fg) 28%, transparent);
+        outline-offset: -2px;
+        background: color-mix(in srgb, var(--link-fg) 4%, var(--body-bg));
+    }
+
+    .article-sidebar-drag-handle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        cursor: grab;
+        user-select: none;
+        color: var(--body-quiet-color);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        background: var(--darkened-bg);
+        font-size: 12px;
+        line-height: 1;
+    }
+
+    .article-sidebar-drag-handle:active {
+        cursor: grabbing;
+    }
+
+    .article-sidebar-node-type {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 22px;
+        padding: 1px 7px;
+        color: var(--body-quiet-color);
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        background: var(--darkened-bg);
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    .article-sidebar-title-field {
+        display: grid;
+        min-width: 0;
+    }
+
+    .article-sidebar-title-input {
+        width: 100%;
+        height: 28px;
+        box-sizing: border-box;
+        padding: 3px 8px;
+        font-size: 13px;
+        line-height: 20px;
+    }
+
+    .article-sidebar-default-title {
+        display: none;
+    }
+
+    .article-sidebar-row-actions {
+        display: inline-flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 3px;
+    }
+
+    .article-sidebar-node-button {
+        height: 26px;
+        padding: 0 8px;
+        color: var(--link-fg);
+        background: var(--body-bg);
+        border-color: color-mix(in srgb, var(--link-fg) 20%, var(--border-color));
+        font-size: 12px;
+    }
+
+    .article-sidebar-node-button-icon {
+        width: 26px;
+        padding: 0;
+        font-size: 13px;
+    }
+
+    .article-sidebar-node-button-muted {
+        color: var(--body-quiet-color);
+        border-color: var(--border-color);
+        background: color-mix(in srgb, var(--darkened-bg) 56%, var(--body-bg));
+    }
+
+    .article-sidebar-node-button-hidden {
+        color: #8a3a24;
+        background: #fff8f4;
+        border-color: #e4b49f;
+    }
+
+    .article-sidebar-node-button-hidden[aria-pressed="true"] {
+        color: var(--link-fg);
+        background: color-mix(in srgb, var(--link-fg) 7%, var(--body-bg));
+        border-color: color-mix(in srgb, var(--link-fg) 22%, var(--border-color));
+    }
+
+    .article-sidebar-node-button-preview {
+        background: color-mix(in srgb, var(--link-fg) 7%, var(--body-bg));
+    }
+
+    .article-sidebar-admin-row [aria-disabled="true"],
+    .article-sidebar-collection-root-row [aria-disabled="true"] {
+        pointer-events: none;
+        opacity: 0.55;
+    }
+
+    .article-sidebar-admin-empty {
+        padding: 14px;
+        color: var(--body-quiet-color);
+        background: var(--darkened-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+    }
+
+    .article-sidebar-confirm-backdrop[hidden] {
+        display: none;
+    }
+
+    .article-sidebar-confirm-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(15, 18, 22, 0.42);
+    }
+
+    .article-sidebar-confirm-dialog {
+        display: grid;
+        gap: 14px;
+        width: min(420px, 100%);
+        padding: 18px;
+        color: var(--body-fg);
+        background: var(--body-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.2);
+    }
+
+    .article-sidebar-confirm-dialog h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    .article-sidebar-confirm-dialog p {
+        margin: 0;
+        color: var(--body-quiet-color);
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .article-sidebar-confirm-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 2px;
+    }
+
+    @media (max-width: 1180px) {
+        .article-sidebar-admin-row,
+        .article-sidebar-collection-root-row,
+        .article-sidebar-editor-head {
+            grid-template-columns: 1fr;
+            align-items: stretch;
+        }
+
+        .article-sidebar-row-actions,
+        .article-sidebar-admin-actions {
+            justify-content: flex-start;
+        }
+
+        .article-sidebar-admin-list .article-sidebar-admin-list {
+            margin-left: 14px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">首页</a>
+    &rsaquo; <a href="{% url 'admin_article_sidebar' %}">文章侧边栏配置</a>
+    {% if selected_collection %}
+        &rsaquo; {{ selected_collection.title }}
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="article-sidebar-admin-shell">
+    <div class="article-sidebar-admin-toolbar">
+        <div>
+            <p class="article-sidebar-admin-kicker">文章根目录：{{ article_root }}</p>
+            <h1 class="article-sidebar-admin-title">文章侧边栏配置</h1>
+            <div class="article-sidebar-admin-summary">
+                共 {{ article_collections|length }} 个专栏，{{ node_count }} 个侧边栏节点，已保存配置 {{ config_count }} 个。
+            </div>
+        </div>
+        <form class="article-sidebar-admin-actions" method="post">
+            {% csrf_token %}
+            <button class="article-sidebar-button article-sidebar-button-danger"
+                    type="submit"
+                    name="action"
+                    value="reset"
+                    data-confirm-title="重置全部"
+                    data-confirm-message="确定要重置全部文章侧边栏定制吗？"
+                    data-confirm-reset>重置全部</button>
+        </form>
+    </div>
+
+    {% if not selected_collection %}
+        {% if article_collections %}
+            <div class="article-sidebar-collection-grid">
+                {% for collection in article_collections %}
+                    <a class="article-sidebar-collection-card{% if collection.is_hidden %} is-hidden{% endif %}"
+                       href="{% url 'admin_article_sidebar' %}?collection={{ collection.path|urlencode }}">
+                        <div>
+                            <h3>{{ collection.title }}</h3>
+                            <div class="article-sidebar-collection-meta">
+                                <span class="article-sidebar-pill">{{ collection.article_count }} 篇文章</span>
+                                <span class="article-sidebar-pill">{{ collection.tree.children|length }} 个一级节点</span>
+                                {% if collection.is_hidden %}
+                                    <span class="article-sidebar-pill article-sidebar-pill-hidden">已隐藏</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="article-sidebar-collection-path">{{ collection.path }}</div>
+                        <span class="article-sidebar-card-action">配置</span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="article-sidebar-admin-empty">
+                暂时没有检测到专栏目录，请先在文章根目录中添加 Markdown 文档。
+            </div>
+        {% endif %}
+    {% else %}
+        <form class="article-sidebar-admin-editor" method="post" data-sidebar-admin-form>
+            {% csrf_token %}
+            <input type="hidden" name="collection_path" value="{{ selected_collection.path }}">
+            <input type="hidden" name="sidebar_payload" data-sidebar-payload>
+
+            <div class="article-sidebar-editor-head">
+                <div>
+                    <h2>{{ selected_collection.title }}</h2>
+                    <div class="article-sidebar-admin-summary">
+                        {{ selected_collection.article_count }} 篇文章，{{ selected_collection.tree.children|length }} 个一级节点。拖动行首手柄或使用上移/下移调整同级顺序。
+                    </div>
+                </div>
+                <div class="article-sidebar-admin-actions">
+                    <a class="article-sidebar-button article-sidebar-button-plain" href="{% url 'admin_article_sidebar' %}">返回列表</a>
+                    <button class="article-sidebar-button article-sidebar-button-secondary"
+                            type="button"
+                            data-undo-sidebar
+                            disabled
+                            title="没有可撤销的操作">撤销</button>
+                    <button class="article-sidebar-button article-sidebar-button-secondary" type="button" data-reset-all-titles>恢复默认</button>
+                    <button class="article-sidebar-button article-sidebar-button-primary" type="submit">保存</button>
+                    <button class="article-sidebar-button article-sidebar-button-danger"
+                            type="submit"
+                            name="action"
+                            value="reset_collection"
+                            data-confirm-title="重置专栏"
+                            data-confirm-message="确定要重置当前专栏的侧边栏定制吗？"
+                            data-confirm-reset-current>重置专栏</button>
+                </div>
+            </div>
+
+            <div class="article-sidebar-editor-body">
+                <div class="article-sidebar-collection-root-row{% if selected_collection.is_hidden %} is-hidden{% endif %}"
+                     data-collection-root-item
+                     data-path="{{ selected_collection.path }}"
+                     data-node-type="{{ selected_collection.node_type }}"
+                     data-parent-path="{{ selected_collection.parent_path }}"
+                     data-sort-order="{{ selected_collection.sort_order }}"
+                     data-hidden="{% if selected_collection.is_hidden %}true{% else %}false{% endif %}">
+                    <span class="article-sidebar-node-type">专栏</span>
+                    <div class="article-sidebar-title-field">
+                        <input class="article-sidebar-title-input"
+                               type="text"
+                               value="{{ selected_collection.title }}"
+                               placeholder="{{ selected_collection.default_title }}"
+                               data-title-input
+                               data-default-title="{{ selected_collection.default_title }}"
+                               aria-label="{{ selected_collection.path }} 标题">
+                        <span class="article-sidebar-default-title">默认：{{ selected_collection.default_title }}</span>
+                    </div>
+                    <div class="article-sidebar-row-actions">
+                        <button class="article-sidebar-node-button article-sidebar-node-button-muted" type="button" data-reset-title title="恢复默认标题">默认</button>
+                        <button class="article-sidebar-node-button article-sidebar-node-button-hidden"
+                                type="button"
+                                data-toggle-hidden
+                                aria-pressed="{% if selected_collection.is_hidden %}true{% else %}false{% endif %}"
+                                title="{% if selected_collection.is_hidden %}显示此专栏{% else %}隐藏此专栏{% endif %}">
+                            {% if selected_collection.is_hidden %}显示{% else %}隐藏{% endif %}
+                        </button>
+                    </div>
+                    <span class="article-sidebar-node-path" title="{{ selected_collection.path }}">{{ selected_collection.path }}</span>
+                </div>
+
+                {% if selected_collection.tree.children %}
+                    <ol class="article-sidebar-admin-list article-sidebar-admin-root"
+                        data-sidebar-admin-root
+                        data-sidebar-admin-list
+                        data-parent-path="{{ selected_collection.path }}">
+                        {% include "admin/_article_sidebar_tree.html" with tree=selected_collection.tree %}
+                    </ol>
+                {% else %}
+                    <div class="article-sidebar-admin-empty">
+                        当前专栏下暂时没有可配置的文章节点。
+                    </div>
+                {% endif %}
+            </div>
+        </form>
+    {% endif %}
+</div>
+
+<div class="article-sidebar-confirm-backdrop" data-sidebar-confirm hidden>
+    <div class="article-sidebar-confirm-dialog"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="article-sidebar-confirm-title"
+         aria-describedby="article-sidebar-confirm-message"
+         tabindex="-1"
+         data-sidebar-confirm-dialog>
+        <h2 id="article-sidebar-confirm-title" data-sidebar-confirm-title>确认操作</h2>
+        <p id="article-sidebar-confirm-message" data-sidebar-confirm-message></p>
+        <div class="article-sidebar-confirm-actions">
+            <button class="article-sidebar-button article-sidebar-button-plain"
+                    type="button"
+                    data-sidebar-confirm-cancel>取消</button>
+            <button class="article-sidebar-button article-sidebar-button-danger"
+                    type="button"
+                    data-sidebar-confirm-accept>确认</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const editorForm = document.querySelector('[data-sidebar-admin-form]');
+        const confirmModal = document.querySelector('[data-sidebar-confirm]');
+        const confirmDialog = confirmModal ? confirmModal.querySelector('[data-sidebar-confirm-dialog]') : null;
+        const confirmTitle = confirmModal ? confirmModal.querySelector('[data-sidebar-confirm-title]') : null;
+        const confirmMessage = confirmModal ? confirmModal.querySelector('[data-sidebar-confirm-message]') : null;
+        const confirmCancel = confirmModal ? confirmModal.querySelector('[data-sidebar-confirm-cancel]') : null;
+        const confirmAccept = confirmModal ? confirmModal.querySelector('[data-sidebar-confirm-accept]') : null;
+        let pendingConfirmSubmitter = null;
+        let confirmRestoreFocusTarget = null;
+
+        function closeConfirmModal(restoreFocus) {
+            if (!confirmModal) return;
+
+            confirmModal.hidden = true;
+            pendingConfirmSubmitter = null;
+            if (restoreFocus !== false && confirmRestoreFocusTarget) {
+                confirmRestoreFocusTarget.focus();
+            }
+            confirmRestoreFocusTarget = null;
+        }
+
+        function openConfirmModal(submitter) {
+            if (!confirmModal || !confirmDialog) return;
+
+            pendingConfirmSubmitter = submitter;
+            confirmRestoreFocusTarget = submitter;
+            if (confirmTitle) {
+                confirmTitle.textContent = submitter.dataset.confirmTitle || '确认操作';
+            }
+            if (confirmMessage) {
+                confirmMessage.textContent = submitter.dataset.confirmMessage || '确定要执行此操作吗？';
+            }
+            confirmModal.hidden = false;
+            window.requestAnimationFrame(() => {
+                (confirmCancel || confirmDialog).focus();
+            });
+        }
+
+        function submitPendingConfirmedForm() {
+            const submitter = pendingConfirmSubmitter;
+            const form = submitter ? submitter.form : null;
+            closeConfirmModal(false);
+
+            if (!submitter || !form) return;
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit(submitter);
+                return;
+            }
+            form.submit();
+        }
+
+        document.addEventListener('click', event => {
+            const resetButton = event.target.closest('[data-confirm-reset], [data-confirm-reset-current]');
+            if (!resetButton) return;
+
+            if (!confirmModal) {
+                return;
+            }
+
+            event.preventDefault();
+            if (resetButton.disabled) return;
+            openConfirmModal(resetButton);
+        });
+
+        if (confirmCancel) {
+            confirmCancel.addEventListener('click', () => closeConfirmModal(true));
+        }
+
+        if (confirmAccept) {
+            confirmAccept.addEventListener('click', submitPendingConfirmedForm);
+        }
+
+        if (confirmModal) {
+            confirmModal.addEventListener('click', event => {
+                if (event.target === confirmModal) {
+                    closeConfirmModal(true);
+                }
+            });
+        }
+
+        document.addEventListener('keydown', event => {
+            if (!confirmModal || confirmModal.hidden) return;
+
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeConfirmModal(true);
+            }
+        });
+
+        if (!editorForm) return;
+
+        const payloadInput = editorForm.querySelector('[data-sidebar-payload]');
+        const undoButton = editorForm.querySelector('[data-undo-sidebar]');
+        const MAX_UNDO_STEPS = 100;
+        const undoStack = [];
+        let dragItem = null;
+        let dragList = null;
+        let dragUndoSnapshot = null;
+        let dragUndoRecorded = false;
+        let restoringHistory = false;
+
+        function isSidebarItem(element) {
+            return element && element.matches && element.matches('[data-sidebar-admin-item]');
+        }
+
+        function getDirectRow(item) {
+            return Array.from(item.children).find(child => child.classList.contains('article-sidebar-admin-row'));
+        }
+
+        function getDirectChildList(item) {
+            return Array.from(item.children).find(child => child.matches && child.matches('[data-sidebar-admin-list]'));
+        }
+
+        function getCollectionPath(path) {
+            return (path || '').split('/')[0] || '';
+        }
+
+        function refreshEmptyChildListState(list) {
+            if (!list || list.matches('[data-sidebar-admin-root]')) return;
+
+            const hasItems = Array.from(list.children).some(isSidebarItem);
+            list.toggleAttribute('data-empty-child-list', !hasItems);
+        }
+
+        function canDropInList(item, list) {
+            if (!item || !list) return false;
+
+            const parentPath = list.dataset.parentPath || '';
+            const itemPath = item.dataset.path || '';
+            if (!itemPath || !parentPath) return false;
+            if (parentPath === itemPath || item.contains(list)) return false;
+
+            return getCollectionPath(parentPath) === getCollectionPath(itemPath);
+        }
+
+        function getDropListFromTarget(target) {
+            const nodeRow = target.closest('.article-sidebar-admin-node > .article-sidebar-admin-row');
+            if (nodeRow) {
+                const parentItem = nodeRow.closest('[data-sidebar-admin-item]');
+                if (parentItem && parentItem !== dragItem) {
+                    const childList = getDirectChildList(parentItem);
+                    if (childList && canDropInList(dragItem, childList)) {
+                        return childList;
+                    }
+                }
+            }
+
+            return target.closest('[data-sidebar-admin-list]');
+        }
+
+        function getTitleInput(item) {
+            if (!item) return null;
+            const row = item.matches('[data-collection-root-item]') ? item : getDirectRow(item);
+            return row ? row.querySelector('[data-title-input]') : null;
+        }
+
+        function getItemRow(item) {
+            if (!item) return null;
+            return item.matches('[data-collection-root-item]') ? item : getDirectRow(item);
+        }
+
+        function isHidden(item) {
+            return item && item.dataset.hidden === 'true';
+        }
+
+        function updateHiddenButton(button, hidden) {
+            if (!button) return;
+
+            button.textContent = hidden ? '显示' : '隐藏';
+            button.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+            button.title = hidden ? '显示此节点' : '隐藏此节点';
+        }
+
+        function setControlDisabled(control, disabled) {
+            if (!control) return;
+
+            if (control.matches('input, textarea, select, button')) {
+                control.disabled = disabled;
+                return;
+            }
+
+            if (disabled) {
+                control.setAttribute('aria-disabled', 'true');
+                control.setAttribute('tabindex', '-1');
+            } else {
+                control.removeAttribute('aria-disabled');
+                control.removeAttribute('tabindex');
+            }
+        }
+
+        function syncRowDisabledState(item, inheritedHidden) {
+            const row = getItemRow(item);
+            if (!row) return;
+
+            const directHidden = isHidden(item);
+            const effectiveHidden = inheritedHidden || directHidden;
+            const canToggle = !inheritedHidden;
+            item.dataset.effectiveHidden = effectiveHidden ? 'true' : 'false';
+            item.classList.toggle('is-hidden', effectiveHidden);
+            item.classList.toggle('is-inherited-hidden', inheritedHidden);
+
+            if (item.matches('[data-sidebar-admin-item]')) {
+                item.setAttribute('draggable', effectiveHidden ? 'false' : 'true');
+            }
+
+            row.querySelectorAll('input, textarea, select, button, a, [data-drag-handle]').forEach(control => {
+                const isToggle = control.matches('[data-toggle-hidden]');
+                setControlDisabled(control, effectiveHidden && (!isToggle || !canToggle));
+            });
+
+            updateHiddenButton(row.querySelector('[data-toggle-hidden]'), directHidden);
+        }
+
+        function syncHiddenBranch(item, inheritedHidden) {
+            const nextInheritedHidden = inheritedHidden || isHidden(item);
+            syncRowDisabledState(item, inheritedHidden);
+
+            const childList = getDirectChildList(item);
+            if (!childList) return;
+
+            Array.from(childList.children).filter(isSidebarItem).forEach(child => {
+                syncHiddenBranch(child, nextInheritedHidden);
+            });
+        }
+
+        function syncHiddenState() {
+            const collectionRoot = editorForm.querySelector('[data-collection-root-item]');
+            const rootHidden = isHidden(collectionRoot);
+            if (collectionRoot) {
+                syncRowDisabledState(collectionRoot, false);
+            }
+
+            const rootList = editorForm.querySelector('[data-sidebar-admin-root]');
+            if (!rootList) return;
+
+            Array.from(rootList.children).filter(isSidebarItem).forEach(item => {
+                syncHiddenBranch(item, rootHidden);
+            });
+        }
+
+        function getDragAfterElement(list, y) {
+            const items = Array.from(list.children).filter(child => {
+                return isSidebarItem(child) && child !== dragItem && !child.classList.contains('is-dragging');
+            });
+
+            return items.reduce((closest, child) => {
+                const row = getDirectRow(child);
+                const box = (row || child).getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return {offset: offset, element: child};
+                }
+                return closest;
+            }, {offset: Number.NEGATIVE_INFINITY, element: null}).element;
+        }
+
+        function moveItem(item, direction) {
+            const list = item.parentElement;
+            if (!list) return;
+
+            if (direction === 'up') {
+                const previous = item.previousElementSibling;
+                if (previous && isSidebarItem(previous)) {
+                    list.insertBefore(item, previous);
+                }
+                return;
+            }
+
+            const next = item.nextElementSibling;
+            if (next && isSidebarItem(next)) {
+                list.insertBefore(next, item);
+            }
+        }
+
+        function collectItem(item, sortOrder, payload) {
+            const input = getTitleInput(item);
+            const itemSortOrder = typeof sortOrder === 'number'
+                ? sortOrder
+                : Number.parseInt(item.dataset.sortOrder || '0', 10) || 0;
+            payload.push({
+                path: item.dataset.path,
+                node_type: item.dataset.nodeType,
+                parent_path: item.dataset.parentPath || '',
+                sort_order: itemSortOrder,
+                title: input ? input.value.trim() : '',
+                is_hidden: isHidden(item),
+            });
+        }
+
+        function collectList(list, payload) {
+            Array.from(list.children).filter(isSidebarItem).forEach((item, index) => {
+                collectItem(item, index, payload);
+
+                const childList = getDirectChildList(item);
+                if (childList) {
+                    collectList(childList, payload);
+                }
+            });
+        }
+
+        function collectState() {
+            const payload = [];
+            const collectionRoot = editorForm.querySelector('[data-collection-root-item]');
+            if (collectionRoot) {
+                collectItem(collectionRoot, null, payload);
+            }
+
+            const rootList = editorForm.querySelector('[data-sidebar-admin-root]');
+            if (rootList) {
+                collectList(rootList, payload);
+            }
+            return payload;
+        }
+
+        function serializeState(state) {
+            return JSON.stringify(state || []);
+        }
+
+        function cloneState(state) {
+            return JSON.parse(serializeState(state));
+        }
+
+        function updateUndoButtonState() {
+            if (!undoButton) return;
+
+            const hasUndo = undoStack.length > 0;
+            undoButton.disabled = !hasUndo;
+            undoButton.title = hasUndo ? '撤销上一步' : '没有可撤销的操作';
+        }
+
+        function pushUndoSnapshot(snapshot) {
+            if (restoringHistory || !snapshot) return;
+
+            const nextSnapshot = cloneState(snapshot);
+            const lastSnapshot = undoStack[undoStack.length - 1];
+            if (lastSnapshot && serializeState(lastSnapshot) === serializeState(nextSnapshot)) {
+                return;
+            }
+
+            undoStack.push(nextSnapshot);
+            if (undoStack.length > MAX_UNDO_STEPS) {
+                undoStack.shift();
+            }
+            updateUndoButtonState();
+        }
+
+        function pushUndoState() {
+            pushUndoSnapshot(collectState());
+        }
+
+        function runWithUndo(mutator) {
+            const beforeState = collectState();
+            mutator();
+            if (serializeState(beforeState) !== serializeState(collectState())) {
+                pushUndoSnapshot(beforeState);
+            }
+        }
+
+        function restoreState(state) {
+            const collectionRoot = editorForm.querySelector('[data-collection-root-item]');
+            const rootList = editorForm.querySelector('[data-sidebar-admin-root]');
+            const collectionPath = collectionRoot ? collectionRoot.dataset.path || '' : '';
+            const itemMap = new Map();
+
+            if (collectionRoot) {
+                itemMap.set(collectionRoot.dataset.path || '', collectionRoot);
+            }
+
+            editorForm.querySelectorAll('[data-sidebar-admin-item]').forEach(item => {
+                itemMap.set(item.dataset.path || '', item);
+            });
+
+            restoringHistory = true;
+            try {
+                state.forEach(entry => {
+                    const item = itemMap.get(entry.path || '');
+                    if (!item) return;
+
+                    item.dataset.parentPath = entry.parent_path || '';
+                    item.dataset.sortOrder = String(entry.sort_order || 0);
+                    item.dataset.hidden = entry.is_hidden ? 'true' : 'false';
+
+                    const input = getTitleInput(item);
+                    if (input) {
+                        input.value = entry.title || '';
+                    }
+                });
+
+                state.forEach(entry => {
+                    if (!rootList || entry.path === collectionPath) return;
+
+                    const item = itemMap.get(entry.path || '');
+                    if (!item || item.matches('[data-collection-root-item]')) return;
+
+                    const parentPath = entry.parent_path || '';
+                    const parentItem = itemMap.get(parentPath);
+                    const parentList = parentItem && !parentItem.matches('[data-collection-root-item]')
+                        ? getDirectChildList(parentItem)
+                        : rootList;
+                    if (parentList) {
+                        parentList.appendChild(item);
+                    }
+                });
+
+                editorForm.querySelectorAll('[data-sidebar-admin-list]').forEach(refreshEmptyChildListState);
+                syncHiddenState();
+            } finally {
+                restoringHistory = false;
+                updateUndoButtonState();
+            }
+        }
+
+        function undoLastChange() {
+            const previousState = undoStack.pop();
+            if (!previousState) {
+                updateUndoButtonState();
+                return;
+            }
+            restoreState(previousState);
+        }
+
+        function recordDragMutationIfNeeded() {
+            if (dragUndoRecorded || !dragUndoSnapshot) return;
+            if (serializeState(dragUndoSnapshot) === serializeState(collectState())) return;
+
+            pushUndoSnapshot(dragUndoSnapshot);
+            dragUndoRecorded = true;
+        }
+
+        editorForm.addEventListener('dragstart', event => {
+            const item = event.target.closest('[data-sidebar-admin-item]');
+            if (!item) return;
+
+            if (item.dataset.effectiveHidden === 'true') {
+                event.preventDefault();
+                return;
+            }
+
+            const interactiveTarget = event.target.closest('input, textarea, select, button, a');
+            if (interactiveTarget && !event.target.closest('[data-drag-handle]')) {
+                event.preventDefault();
+                return;
+            }
+
+            dragItem = item;
+            dragList = item.parentElement;
+            dragUndoSnapshot = collectState();
+            dragUndoRecorded = false;
+            item.classList.add('is-dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', item.dataset.path || '');
+        });
+
+        editorForm.addEventListener('dragend', () => {
+            editorForm.querySelectorAll('.is-drop-target').forEach(row => row.classList.remove('is-drop-target'));
+            editorForm.querySelectorAll('.is-drop-list').forEach(list => list.classList.remove('is-drop-list'));
+            if (dragItem) {
+                dragItem.classList.remove('is-dragging');
+            }
+            dragItem = null;
+            dragList = null;
+            dragUndoSnapshot = null;
+            dragUndoRecorded = false;
+        });
+
+        editorForm.addEventListener('dragover', event => {
+            if (!dragItem) return;
+
+            const list = getDropListFromTarget(event.target);
+            if (!canDropInList(dragItem, list)) return;
+
+            event.preventDefault();
+            const previousList = dragItem.parentElement;
+            const afterElement = getDragAfterElement(list, event.clientY);
+            if (afterElement) {
+                list.insertBefore(dragItem, afterElement);
+            } else {
+                list.appendChild(dragItem);
+            }
+
+            refreshEmptyChildListState(previousList);
+            refreshEmptyChildListState(list);
+            dragList = list;
+            dragItem.dataset.parentPath = list.dataset.parentPath || '';
+            recordDragMutationIfNeeded();
+            editorForm.querySelectorAll('.is-drop-target').forEach(row => row.classList.remove('is-drop-target'));
+            editorForm.querySelectorAll('.is-drop-list').forEach(dropList => dropList.classList.remove('is-drop-list'));
+            list.classList.add('is-drop-list');
+            const parentItem = list.closest('[data-sidebar-admin-item]');
+            const row = parentItem ? getDirectRow(parentItem) : getDirectRow(dragItem);
+            if (row) row.classList.add('is-drop-target');
+        });
+
+        editorForm.addEventListener('click', event => {
+            const undoTrigger = event.target.closest('[data-undo-sidebar]');
+            if (undoTrigger) {
+                undoLastChange();
+                return;
+            }
+
+            const resetAllTitles = event.target.closest('[data-reset-all-titles]');
+            if (resetAllTitles) {
+                runWithUndo(() => {
+                    editorForm.querySelectorAll('[data-title-input]').forEach(input => {
+                        input.value = input.dataset.defaultTitle || '';
+                    });
+                });
+                return;
+            }
+
+            const toggleHidden = event.target.closest('[data-toggle-hidden]');
+            if (toggleHidden) {
+                const item = toggleHidden.closest('[data-sidebar-admin-item], [data-collection-root-item]');
+                if (item && !toggleHidden.disabled) {
+                    runWithUndo(() => {
+                        item.dataset.hidden = isHidden(item) ? 'false' : 'true';
+                        syncHiddenState();
+                    });
+                }
+                return;
+            }
+
+            const resetTitle = event.target.closest('[data-reset-title]');
+            if (resetTitle) {
+                const item = resetTitle.closest('[data-sidebar-admin-item], [data-collection-root-item]');
+                const input = getTitleInput(item);
+                if (input) {
+                    runWithUndo(() => {
+                        input.value = input.dataset.defaultTitle || '';
+                    });
+                    input.focus();
+                }
+                return;
+            }
+
+            const moveButton = event.target.closest('[data-move-item]');
+            if (moveButton) {
+                const item = moveButton.closest('[data-sidebar-admin-item]');
+                if (item) {
+                    runWithUndo(() => {
+                        moveItem(item, moveButton.dataset.moveItem);
+                    });
+                }
+            }
+        });
+
+        editorForm.addEventListener('beforeinput', event => {
+            if (event.target.matches('[data-title-input]') && !event.target.disabled) {
+                pushUndoState();
+            }
+        });
+
+        editorForm.addEventListener('keydown', event => {
+            const isUndoShortcut = (event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === 'z';
+            if (!isUndoShortcut) return;
+
+            event.preventDefault();
+            undoLastChange();
+        });
+
+        editorForm.addEventListener('submit', event => {
+            const submitter = event.submitter;
+            if (submitter && submitter.matches('[data-confirm-reset-current]')) {
+                return;
+            }
+
+            payloadInput.value = JSON.stringify(collectState());
+        });
+
+        syncHiddenState();
+        updateUndoButtonState();
+    })();
+</script>
+{% endblock %}

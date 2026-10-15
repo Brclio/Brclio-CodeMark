@@ -1,0 +1,67 @@
+{% extends "blog/base.html" %}
+
+{% block title %}{{ vip_page.title }} - VIP 会员中心 - CodeMark 博客{% endblock %}
+
+{% block content %}
+<section class="blog-command blog-vip-hero" aria-labelledby="vipGuideTitle">
+    <div class="blog-command-copy">
+        <h1 id="vipGuideTitle">{{ vip_page.title }}</h1>
+        {% if vip_page.summary %}
+            <p>{{ vip_page.summary }}</p>
+        {% else %}
+            <p>查看 VIP 会员权益、文章 API 使用方式和服务规范。</p>
+        {% endif %}
+    </div>
+    <div class="blog-command-actions">
+        {% if api_vip_page and api_vip_page.pk != vip_page.pk %}
+            <a class="blog-btn blog-btn-primary" href="{{ api_vip_page.get_absolute_url }}">查看 API 教程</a>
+        {% endif %}
+        {% if api_vip_page and api_vip_page.pk == vip_page.pk and sample_api_url %}
+            <button class="blog-btn blog-btn-primary" type="button" data-copy-link="{{ sample_api_url }}" data-copy-label="复制示例 API 链接">复制示例 API</button>
+        {% endif %}
+        {% if api_vip_page and api_vip_page.pk == vip_page.pk and current_cookie_header %}
+            <button class="blog-btn blog-btn-ghost" type="button" data-copy-link="{{ current_cookie_header }}" data-copy-label="复制当前 Cookies">复制 Cookies</button>
+        {% endif %}
+        <a class="blog-btn blog-btn-ghost" href="{% url 'blog_list' %}">浏览文章</a>
+    </div>
+</section>
+
+<section class="blog-vip-nav-panel" aria-label="VIP 页面导航">
+    <nav class="blog-vip-tabs">
+        {% for page in vip_pages %}
+            <a class="blog-vip-tab{% if page.pk == vip_page.pk %} is-active{% endif %}"
+               href="{{ page.get_absolute_url }}"
+               {% if page.pk == vip_page.pk %}aria-current="page"{% endif %}>
+                <span class="blog-vip-tab-title">{{ page.title }}</span>
+                {% if page.summary %}
+                    <span class="blog-vip-tab-summary">{{ page.summary }}</span>
+                {% endif %}
+            </a>
+        {% endfor %}
+    </nav>
+</section>
+
+<section class="blog-detail blog-vip-guide">
+    <div class="blog-section-head">
+        <h2>{{ vip_page.title }}</h2>
+        <span>更新于 {{ vip_page.updated_at|date:"Y-m-d H:i" }}</span>
+    </div>
+    <div class="blog-vip-current" aria-label="当前 VIP 状态">
+        <div>
+            <span>当前账号</span>
+            <strong>{{ display_name }}</strong>
+        </div>
+        <div>
+            <span>权限状态</span>
+            <strong>VIP 访问已启用</strong>
+        </div>
+        <div>
+            <span>API 配额</span>
+            <strong>{{ api_window_days }} 天 {{ api_limit }} 次 / 篇文章</strong>
+        </div>
+    </div>
+    <div class="blog-prose" data-blog-static-code>
+        {{ vip_body_html }}
+    </div>
+</section>
+{% endblock %}

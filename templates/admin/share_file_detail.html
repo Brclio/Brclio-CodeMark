@@ -1,0 +1,332 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+    .share-detail-shell {
+        display: grid;
+        gap: 18px;
+    }
+    .share-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+    }
+    .share-detail-panel {
+        padding: 14px;
+        background: var(--darkened-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+    }
+    .share-detail-panel h2 {
+        margin: 0 0 10px;
+        font-size: 15px;
+    }
+    .share-detail-meta {
+        margin: 0;
+        color: var(--body-quiet-color);
+        line-height: 1.7;
+        word-break: break-word;
+    }
+    .share-detail-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .share-detail-actions form {
+        margin: 0;
+    }
+    .share-detail-danger {
+        color: #fff !important;
+        background: #ba2121 !important;
+        border-color: #ba2121 !important;
+    }
+    .share-detail-status {
+        display: inline-block;
+        padding: 2px 8px;
+        border: 1px solid var(--border-color);
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .share-detail-status-ok {
+        color: #027a48;
+        border-color: #a6f4c5;
+        background: #ecfdf3;
+    }
+    .share-detail-status-user-deleted {
+        color: #b54708;
+        border-color: #fedf89;
+        background: #fffaeb;
+    }
+    .share-detail-status-admin-deleted {
+        color: #b42318;
+        border-color: #fecdca;
+        background: #fef3f2;
+    }
+    .share-detail-messages {
+        display: grid;
+        gap: 8px;
+    }
+    .share-detail-message {
+        margin: 0;
+        padding: 9px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--darkened-bg);
+    }
+    .share-file-block {
+        border: 1px solid var(--border-color);
+        background: var(--body-bg);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .share-file-heading {
+        padding: 10px 12px;
+        background: var(--darkened-bg);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .share-code-content {
+        margin: 0;
+        padding: 14px;
+        max-height: 560px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    .share-detail-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--body-bg);
+        border: 1px solid var(--border-color);
+    }
+    .share-detail-table th,
+    .share-detail-table td {
+        padding: 9px 11px;
+        border-bottom: 1px solid var(--border-color);
+        text-align: left;
+        vertical-align: top;
+    }
+    .share-detail-table th {
+        background: var(--darkened-bg);
+    }
+    .share-asset-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 14px;
+    }
+    .share-asset-card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--body-bg);
+        overflow: hidden;
+    }
+    .share-asset-preview {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 180px;
+        padding: 12px;
+        background: var(--darkened-bg);
+        border-bottom: 1px solid var(--border-color);
+    }
+    .share-asset-preview img,
+    .share-asset-preview video {
+        display: block;
+        max-width: 100%;
+        max-height: 360px;
+        border-radius: 6px;
+    }
+    .share-asset-preview audio {
+        width: 100%;
+    }
+    .share-asset-file-fallback {
+        color: var(--body-quiet-color);
+        font-size: 13px;
+        text-align: center;
+        word-break: break-word;
+    }
+    .share-asset-meta {
+        display: grid;
+        gap: 6px;
+        padding: 12px;
+        font-size: 13px;
+        line-height: 1.45;
+        word-break: break-word;
+    }
+    .share-asset-meta strong {
+        color: var(--body-fg);
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">首页</a>
+    &rsaquo; <a href="{% url 'admin_share_files' %}">分享文件后台</a>
+    &rsaquo; {{ record.project_id }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="share-detail-shell">
+    <div class="share-detail-actions">
+        <a class="button" href="{% url 'admin_share_files' %}">返回列表</a>
+        <a class="button" href="{{ record.admin_share_path }}" target="_blank" rel="noopener">管理员打开分享页</a>
+        {% if record.is_deleted %}
+            <form action="{% url 'admin_restore_share_file' record.project_id %}" method="post">
+                {% csrf_token %}
+                <button class="button" type="submit">恢复</button>
+            </form>
+        {% endif %}
+        {% if not record.is_admin_deleted %}
+            <form action="{% url 'admin_delete_share_file' record.project_id %}" method="post" onsubmit="return confirm('确定将这个分享移入后台回收站？普通用户将无法访问。');">
+                {% csrf_token %}
+                <button class="button" type="submit">后台删除</button>
+            </form>
+        {% endif %}
+        <form action="{% url 'admin_hard_delete_share_file' record.project_id %}" method="post" onsubmit="return confirm('永久删除会物理删除文本、二维码和资源文件，确定继续？');">
+            {% csrf_token %}
+            <button class="button share-detail-danger" type="submit">永久删除</button>
+        </form>
+    </div>
+
+    {% if messages %}
+        <div class="share-detail-messages">
+            {% for message in messages %}
+                <p class="share-detail-message">{{ message }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="share-detail-grid">
+        <section class="share-detail-panel">
+            <h2>基础信息</h2>
+            <p class="share-detail-meta">Project ID: {{ record.project_id }}</p>
+            <p class="share-detail-meta">模板: {{ record.template_type }}</p>
+            <p class="share-detail-meta">语言: {{ record.language }}</p>
+            <p class="share-detail-meta">主题: {{ record.theme }}</p>
+            <p class="share-detail-meta">归属用户 ID: {{ record.owner_user_id|default:"-" }}</p>
+        </section>
+        <section class="share-detail-panel">
+            <h2>删除状态</h2>
+            {% if record.is_admin_deleted %}
+                <p class="share-detail-meta"><span class="share-detail-status share-detail-status-admin-deleted">{{ record.delete_status }}</span></p>
+                <p class="share-detail-meta">后台删除时间: {{ record.admin_deleted_at|date:"Y-m-d H:i:s" }}</p>
+                <p class="share-detail-meta">操作人 ID: {{ record.admin_deleted_by|default:"-" }}</p>
+            {% elif record.is_user_deleted %}
+                <p class="share-detail-meta"><span class="share-detail-status share-detail-status-user-deleted">{{ record.delete_status }}</span></p>
+                <p class="share-detail-meta">用户删除时间: {{ record.user_deleted_at|date:"Y-m-d H:i:s" }}</p>
+                <p class="share-detail-meta">用户回收站到期: {{ record.user_delete_expires_at|date:"Y-m-d H:i:s" }}</p>
+                <p class="share-detail-meta">用户可恢复: {% if record.user_trash_is_recoverable %}是{% else %}否{% endif %}</p>
+            {% else %}
+                <p class="share-detail-meta"><span class="share-detail-status share-detail-status-ok">正常</span></p>
+                <p class="share-detail-meta">普通访问: 允许</p>
+            {% endif %}
+        </section>
+        <section class="share-detail-panel">
+            <h2>存储信息</h2>
+            <p class="share-detail-meta">文本路径: {{ record.storage_path }}</p>
+            <p class="share-detail-meta">二维码路径: {{ record.qr_path|default:"-" }}</p>
+            <p class="share-detail-meta">大小: {{ record.size }} bytes</p>
+        </section>
+        <section class="share-detail-panel">
+            <h2>统计</h2>
+            <p class="share-detail-meta">文本文件: {{ record.text_file_count }}</p>
+            <p class="share-detail-meta">文件夹: {{ record.folder_count }}</p>
+            <p class="share-detail-meta">资源: {{ record.asset_count }}</p>
+            <p class="share-detail-meta">内容字符: {{ record.content_chars }}</p>
+        </section>
+        <section class="share-detail-panel">
+            <h2>时间</h2>
+            <p class="share-detail-meta">创建: {{ record.created_at|date:"Y-m-d H:i:s" }}</p>
+            <p class="share-detail-meta">修改: {{ record.modified_at|date:"Y-m-d H:i:s" }}</p>
+        </section>
+    </div>
+
+    {% if record.folders %}
+        <section>
+            <h2>文件夹</h2>
+            <table class="share-detail-table">
+                <thead><tr><th>路径</th></tr></thead>
+                <tbody>
+                {% for folder in record.folders %}
+                    <tr><td>{{ folder }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% endif %}
+
+    {% if record.assets %}
+        <section>
+            <h2>资源文件</h2>
+            <div class="share-asset-list">
+                {% for asset in record.assets %}
+                    <article class="share-asset-card">
+                        {% with preview_url=asset.admin_url|default:asset.url %}
+                        <div class="share-asset-preview">
+                            {% if preview_url and asset.preview_type == "image" %}
+                                <a href="{{ preview_url }}" target="_blank" rel="noopener">
+                                    <img src="{{ preview_url }}" alt="{{ asset.path }}">
+                                </a>
+                            {% elif preview_url and asset.preview_type == "video" %}
+                                <video src="{{ preview_url }}" controls preload="metadata"></video>
+                            {% elif preview_url and asset.preview_type == "audio" %}
+                                <audio src="{{ preview_url }}" controls preload="metadata"></audio>
+                            {% else %}
+                                <div class="share-asset-file-fallback">
+                                    {% if preview_url %}
+                                        <a href="{{ preview_url }}" target="_blank" rel="noopener">打开文件</a>
+                                    {% else %}
+                                        无可预览地址
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="share-asset-meta">
+                            <div><strong>项目路径:</strong> {{ asset.path }}</div>
+                            <div><strong>存储路径:</strong> {{ asset.stored_path }}</div>
+                            <div><strong>MIME:</strong> {{ asset.mime_type }}</div>
+                            <div><strong>大小:</strong> {{ asset.size }} bytes</div>
+                            <div><strong>类型:</strong> {{ asset.preview_type }}</div>
+                            {% if preview_url %}
+                                <div><a href="{{ preview_url }}" target="_blank" rel="noopener">新窗口打开</a></div>
+                            {% endif %}
+                        </div>
+                        {% endwith %}
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    <section>
+        <h2>文本文件内容</h2>
+        {% for text_file in record.text_files %}
+            <article class="share-file-block">
+                <div class="share-file-heading">
+                    <strong>{{ text_file.path }}</strong>
+                    <span>{{ text_file.language }} / {{ text_file.content|length }} 字符</span>
+                </div>
+                <pre class="share-code-content">{{ text_file.content }}</pre>
+            </article>
+        {% empty %}
+            <div class="share-detail-panel">没有文本文件内容。</div>
+        {% endfor %}
+    </section>
+
+    <section>
+        <h2>原始存储内容</h2>
+        <article class="share-file-block">
+            <pre class="share-code-content">{{ record.stored_content }}</pre>
+        </article>
+    </section>
+</div>
+{% endblock %}

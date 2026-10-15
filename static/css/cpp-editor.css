@@ -1,0 +1,70 @@
+.cpp-editor-page #workspaceMain {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+}
+
+.cpp-editor-page #appRoot {
+    width: 100vw;
+}
+
+.cpp-editor-page .console-shell {
+    min-width: 0;
+}
+
+.cpp-editor-page .console {
+    min-height: 0;
+}
+
+.cpp-editor-page .console .cpp-console-input-row,
+.cpp-editor-page #mobile-console-output .cpp-console-input-row {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
+    margin: 0;
+    max-width: calc(100% - 1em);
+    vertical-align: baseline;
+}
+
+.cpp-editor-page .console .cpp-console-input-row-inline,
+.cpp-editor-page #mobile-console-output .cpp-console-input-row-inline {
+    margin-left: 0.35em;
+}
+
+.cpp-editor-page .console .cpp-console-input-row .console-inline-input,
+.cpp-editor-page #mobile-console-output .cpp-console-input-row .console-inline-input {
+    box-sizing: border-box;
+    flex: 0 1 18ch;
+    width: 18ch;
+    min-width: 6ch;
+    max-width: 100%;
+    height: 1.8em;
+    padding: 1px 6px;
+    font: inherit;
+}
+
+.cpp-editor-page .cpp-run-btn[disabled] {
+    cursor: wait;
+    opacity: 0.76;
+    filter: grayscale(0.15);
+}
+
+.cpp-editor-page .copy-success {
+    display: none;
+}
+
+.cpp-editor-mobile #appRoot,
+.cpp-editor-mobile #workspaceMain,
+.cpp-editor-mobile #editorArea {
+    height: 100%;
+}
+
+.cpp-editor-mobile #editorArea {
+    position: relative;
+}
+
+@media (max-width: 768px) {
+    .cpp-editor-page .modal-dialog {
+        max-width: 95% !important;
+    }
+}

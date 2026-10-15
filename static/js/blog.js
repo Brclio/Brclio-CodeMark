@@ -1,0 +1,852 @@
+(function () {
+    function readCookie(name) {
+        const cookies = document.cookie ? document.cookie.split("; ") : [];
+        for (let index = 0; index < cookies.length; index += 1) {
+            const parts = cookies[index].split("=");
+            if (parts.shift() === name) {
+                return decodeURIComponent(parts.join("="));
+            }
+        }
+        return "";
+    }
+
+    function csrfToken() {
+        return readCookie("csrftoken");
+    }
+
+    function parseResponse(response) {
+        return response.text().then(function (text) {
+            let data = {};
+            if (text) {
+                try {
+                    data = JSON.parse(text);
+                } catch (error) {
+                    data = {};
+                }
+            }
+            if (!response.ok || !data.ok) {
+                throw new Error(data.message || "请求失败");
+            }
+            return data;
+        });
+    }
+
+    function openLoginDialog() {
+        const loginButton = Array.from(document.querySelectorAll("[data-account-open-login]"))
+            .find(function (button) {
+                return !button.hidden;
+            });
+        if (loginButton) {
+            loginButton.click();
+        }
+    }
+
+    function initLoginPrompt() {
+        if (document.body.dataset.blogLoginPrompt === "1") {
+            window.setTimeout(openLoginDialog, 120);
+        }
+    }
+
+    function initPostActions() {
+        const post = document.querySelector("[data-blog-post]");
+        if (!post) {
+            return;
+        }
+        const likeButton = post.querySelector("[data-blog-like]");
+        const bookmarkButton = post.querySelector("[data-blog-bookmark]");
+        const likeCount = post.querySelector("[data-like-count]");
+
+        function toggle(url, button, activeText, inactiveText, onData) {
+            if (!url || !button) {
+                return;
+            }
+            button.disabled = true;
+            fetch(url, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Accept": "application/json",
+                    "X-CSRFToken": csrfToken()
+                }
+            })
+                .then(parseResponse)
+                .then(function (data) {
+                    button.classList.toggle("is-active", !!data.active);
+                    button.textContent = data.active ? activeText : inactiveText;
+                    if (onData) {
+                        onData(data);
+                    }
+                })
+                .catch(function (error) {
+                    if (error.message === "请先登录") {
+                        openLoginDialog();
+                        return;
+                    }
+                    window.alert(error.message);
+                })
+                .finally(function () {
+                    button.disabled = false;
+                });
+        }
+
+        if (likeButton) {
+            likeButton.addEventListener("click", function () {
+                toggle(post.dataset.likeUrl, likeButton, "已点赞", "点赞", function (data) {
+                    if (likeCount) {
+                        likeCount.textContent = data.count;
+                    }
+                });
+            });
+        }
+        if (bookmarkButton) {
+            bookmarkButton.addEventListener("click", function () {
+                toggle(post.dataset.bookmarkUrl, bookmarkButton, "已收藏", "收藏");
+            });
+        }
+    }
+
+    function initCommentReplies() {
+        document.querySelectorAll("[data-comment-reply-form]").forEach(function (form) {
+            form.hidden = true;
+        });
+        document.querySelectorAll("[data-comment-reply-target]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                const targetId = button.dataset.commentReplyTarget;
+                const form = document.querySelector("[data-comment-reply-form='" + targetId + "']");
+                if (!form) {
+                    return;
+                }
+                document.querySelectorAll("[data-comment-reply-form]").forEach(function (replyForm) {
+                    if (replyForm !== form) {
+                        replyForm.hidden = true;
+                    }
+                });
+                form.hidden = !form.hidden;
+                if (!form.hidden) {
+                    const textarea = form.querySelector("textarea");
+                    if (textarea) {
+                        textarea.focus();
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll("[data-comment-reply-cancel]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                const form = button.closest("[data-comment-reply-form]");
+                if (form) {
+                    form.hidden = true;
+                }
+            });
+        });
+    }
+
+    function initCopyLinks() {
+        document.querySelectorAll("[data-copy-link]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                const link = button.dataset.copyLink || "";
+                const label = button.dataset.copyLabel || "复制链接";
+                const originalText = button.textContent;
+                const done = function () {
+                    button.textContent = "已复制";
+                    window.setTimeout(function () {
+                        button.textContent = originalText;
+                        button.classList.remove("is-active");
+                        if (document.activeElement === button) {
+                            button.blur();
+                        }
+                    }, 1600);
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(link).then(done).catch(function () {
+                        window.prompt(label, link);
+                    });
+                    return;
+                }
+                window.prompt(label, link);
+            });
+        });
+    }
+
+    let blogPyodidePromise = null;
+
+    function copyPlainText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(text).catch(function () {
+                window.prompt("复制代码", text);
+            });
+        }
+        return new Promise(function (resolve) {
+            window.prompt("复制代码", text);
+            resolve();
+        });
+    }
+
+    function inferBlogCodeLanguage(codeText) {
+        const code = (codeText || "").trim();
+        if (!code) {
+            return "plaintext";
+        }
+        if (/^curl\b/m.test(code) || /^#!/.test(code)) {
+            return "bash";
+        }
+        if (/^(GET|POST|PUT|PATCH|DELETE)\s+\S+/m.test(code) || /^Cookie:/m.test(code)) {
+            return "http";
+        }
+        if (/^\s*(from\s+\w+(?:\.\w+)*\s+import|import\s+\w+)/m.test(code)
+            || /^\s*def\s+\w+\s*\(/m.test(code)
+            || /^\s*class\s+\w+\s*(\(|:)/m.test(code)
+            || /\b(print|input|range|len|enumerate)\s*\(/.test(code)) {
+            return "python";
+        }
+        if (/\b(fetch|console\.log|const|let|=>)\b/.test(code)) {
+            return "javascript";
+        }
+        if (/^\s*[\[{]/.test(code)) {
+            try {
+                JSON.parse(code);
+                return "json";
+            } catch (error) {
+                return "plaintext";
+            }
+        }
+        return "plaintext";
+    }
+
+    function normalizeBlogCodeLanguage(rawLanguage, codeText) {
+        let language = (rawLanguage || "").toLowerCase().trim();
+        language = language
+            .replace(/^language-/, "")
+            .replace(/^lang-/, "")
+            .replace(/^highlight-/, "");
+        if (!language || language === "hljs" || language === "codehilite") {
+            language = inferBlogCodeLanguage(codeText);
+        }
+        const aliases = {
+            c: "cpp",
+            "c++": "cpp",
+            html: "xml",
+            js: "javascript",
+            jsx: "javascript",
+            md: "markdown",
+            py: "python",
+            python3: "python",
+            sh: "bash",
+            shell: "bash",
+            text: "plaintext",
+            txt: "plaintext",
+        };
+        return aliases[language] || language || "plaintext";
+    }
+
+    function detectBlogCodeLanguage(codeElement, codeText) {
+        const candidates = [];
+        [codeElement, codeElement.parentElement].forEach(function (element) {
+            if (!element) {
+                return;
+            }
+            Array.from(element.classList || []).forEach(function (className) {
+                const match = className.match(/^(?:language|lang|highlight)-(.+)$/i);
+                if (match) {
+                    candidates.push(match[1]);
+                } else if (["bash", "css", "html", "http", "javascript", "js", "json", "py", "python", "shell"].includes(className)) {
+                    candidates.push(className);
+                }
+            });
+            const dataLanguage = element.dataset.language || element.dataset.lang;
+            if (dataLanguage) {
+                candidates.push(dataLanguage);
+            }
+        });
+        return normalizeBlogCodeLanguage(candidates[0], codeText);
+    }
+
+    function displayBlogCodeLanguage(language) {
+        const labels = {
+            bash: "Bash",
+            cpp: "C++",
+            css: "CSS",
+            http: "HTTP",
+            javascript: "JavaScript",
+            json: "JSON",
+            markdown: "Markdown",
+            plaintext: "Text",
+            python: "Python",
+            xml: "HTML",
+        };
+        return labels[language] || language.toUpperCase();
+    }
+
+    function canRunBlogCode(codeElement, language) {
+        if (codeElement.closest("[data-blog-static-code]")) {
+            return false;
+        }
+        const pre = codeElement.parentElement;
+        const runValue = (codeElement.dataset.codeRun || (pre && pre.dataset.codeRun) || "").toLowerCase();
+        if (runValue === "false" || runValue === "0" || runValue === "off") {
+            return false;
+        }
+        if (codeElement.classList.contains("no-run") || (pre && pre.classList.contains("no-run"))) {
+            return false;
+        }
+        return language === "python";
+    }
+
+    function createBlogCodeButton(label, className) {
+        const button = document.createElement("button");
+        button.className = "blog-code-action " + className;
+        button.type = "button";
+        button.textContent = label;
+        return button;
+    }
+
+    function loadBlogPyodideScript() {
+        return new Promise(function (resolve, reject) {
+            if (typeof window.loadPyodide === "function") {
+                resolve();
+                return;
+            }
+            const existingScript = document.querySelector("script[data-blog-pyodide]");
+            if (existingScript) {
+                existingScript.addEventListener("load", resolve, {once: true});
+                existingScript.addEventListener("error", reject, {once: true});
+                return;
+            }
+            const script = document.createElement("script");
+            script.src = "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js";
+            script.async = true;
+            script.dataset.blogPyodide = "1";
+            script.addEventListener("load", resolve, {once: true});
+            script.addEventListener("error", reject, {once: true});
+            document.head.appendChild(script);
+        });
+    }
+
+    function loadBlogPyodide() {
+        if (window.pyodide && typeof window.pyodide.runPythonAsync === "function") {
+            return Promise.resolve(window.pyodide);
+        }
+        if (!blogPyodidePromise) {
+            blogPyodidePromise = loadBlogPyodideScript()
+                .then(function () {
+                    return window.loadPyodide({
+                        indexURL: "https://cdn.jsdelivr.net/pyodide/v0.29.3/full/"
+                    });
+                })
+                .then(function (runtime) {
+                    window.pyodide = runtime;
+                    return runtime.loadPackage(["micropip", "numpy", "pandas"]).then(function () {
+                        return runtime;
+                    });
+                });
+        }
+        return blogPyodidePromise;
+    }
+
+    function setBlogCodeOutput(outputElement, text, isError) {
+        outputElement.hidden = false;
+        outputElement.textContent = text;
+        outputElement.classList.toggle("is-error", !!isError);
+    }
+
+    async function runBlogPython(codeText, outputElement, button) {
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = "运行中";
+        setBlogCodeOutput(outputElement, "正在准备 Python 环境...", false);
+        try {
+            const runtime = await loadBlogPyodide();
+            setBlogCodeOutput(outputElement, "运行中...", false);
+            await runtime.runPythonAsync(`
+import sys, io
+sys.stdout = io.StringIO()
+sys.stderr = io.StringIO()
+`);
+            await runtime.runPythonAsync(codeText);
+            const stdout = runtime.runPython("sys.stdout.getvalue()");
+            const stderr = runtime.runPython("sys.stderr.getvalue()");
+            setBlogCodeOutput(outputElement, (stdout + stderr).trim() || "No output.", false);
+        } catch (error) {
+            setBlogCodeOutput(outputElement, "Error:\n" + error, true);
+        } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    }
+
+    function highlightBlogCode(codeElement, language) {
+        let highlightLanguage = language === "plaintext" ? "plaintext" : language;
+        if (window.hljs && window.hljs.getLanguage && !window.hljs.getLanguage(highlightLanguage)) {
+            highlightLanguage = "plaintext";
+        }
+        Array.from(codeElement.classList || []).forEach(function (className) {
+            if (/^(?:language|lang|highlight)-/i.test(className)) {
+                codeElement.classList.remove(className);
+            }
+        });
+        codeElement.classList.add("language-" + highlightLanguage);
+        if (!window.hljs || typeof window.hljs.highlightElement !== "function") {
+            return;
+        }
+        try {
+            window.hljs.highlightElement(codeElement);
+        } catch (error) {
+            codeElement.classList.add("nohighlight");
+        }
+    }
+
+    function initBlogCodeBlocks() {
+        document.querySelectorAll(".blog-prose pre > code").forEach(function (codeElement) {
+            const pre = codeElement.parentElement;
+            if (!pre || pre.dataset.blogCodeEnhanced === "1" || pre.closest(".blog-code-block")) {
+                return;
+            }
+
+            const rawCode = codeElement.textContent.replace(/\s+$/, "");
+            const language = detectBlogCodeLanguage(codeElement, rawCode);
+            const wrapper = document.createElement("div");
+            const toolbar = document.createElement("div");
+            const languageLabel = document.createElement("span");
+            const actions = document.createElement("div");
+            const copyButton = createBlogCodeButton("复制", "blog-code-copy");
+            const outputElement = document.createElement("pre");
+
+            pre.dataset.blogCodeEnhanced = "1";
+            wrapper.className = "blog-code-block";
+            toolbar.className = "blog-code-toolbar";
+            languageLabel.className = "blog-code-language";
+            languageLabel.textContent = displayBlogCodeLanguage(language);
+            actions.className = "blog-code-actions";
+            outputElement.className = "blog-code-output";
+            outputElement.hidden = true;
+
+            copyButton.addEventListener("click", function () {
+                const originalText = copyButton.textContent;
+                copyPlainText(rawCode).then(function () {
+                    copyButton.textContent = "已复制";
+                    window.setTimeout(function () {
+                        copyButton.textContent = originalText;
+                    }, 1400);
+                });
+            });
+            actions.appendChild(copyButton);
+
+            if (canRunBlogCode(codeElement, language)) {
+                const runButton = createBlogCodeButton("运行", "blog-code-run");
+                runButton.addEventListener("click", function () {
+                    runBlogPython(rawCode, outputElement, runButton);
+                });
+                actions.appendChild(runButton);
+            }
+
+            toolbar.appendChild(languageLabel);
+            toolbar.appendChild(actions);
+            pre.parentNode.insertBefore(wrapper, pre);
+            wrapper.appendChild(toolbar);
+            wrapper.appendChild(pre);
+            wrapper.appendChild(outputElement);
+            highlightBlogCode(codeElement, language);
+        });
+    }
+
+    function initBlogHome() {
+        const home = document.querySelector(".blog-home-modern");
+        if (!home) {
+            return;
+        }
+        const promo = home.querySelector(".blog-home-promo");
+        const toast = home.querySelector(".blog-home-toast");
+        const followKey = "codemark_blog_following";
+        const promoKey = "codemark_blog_home_promo_dismissed";
+
+        function showToast(message) {
+            if (!toast || !message) {
+                return;
+            }
+            toast.textContent = message;
+            toast.hidden = false;
+            window.clearTimeout(showToast.timer);
+            showToast.timer = window.setTimeout(function () {
+                toast.hidden = true;
+            }, 2400);
+        }
+
+        function closeMenus(exceptMenu) {
+            home.querySelectorAll(".blog-home-more-menu").forEach(function (menu) {
+                if (menu !== exceptMenu) {
+                    menu.hidden = true;
+                    const trigger = menu.parentElement && menu.parentElement.querySelector("[data-blog-home-more]");
+                    if (trigger) {
+                        trigger.setAttribute("aria-expanded", "false");
+                    }
+                }
+            });
+        }
+
+        function readFollowing() {
+            try {
+                return new Set(JSON.parse(window.localStorage.getItem(followKey) || "[]"));
+            } catch (error) {
+                return new Set();
+            }
+        }
+
+        function writeFollowing(ids) {
+            try {
+                window.localStorage.setItem(followKey, JSON.stringify(Array.from(ids)));
+            } catch (error) {
+                // Local follow state is progressive enhancement only.
+            }
+        }
+
+        function syncFollowButtons() {
+            const following = readFollowing();
+            home.querySelectorAll("[data-blog-follow]").forEach(function (button) {
+                const active = following.has(button.dataset.blogFollow);
+                button.classList.toggle("is-active", active);
+                button.textContent = active ? "Following" : "Follow";
+            });
+        }
+
+        function toggleHomeAction(button, countSelector) {
+            const url = button.dataset.url;
+            if (!url || button.disabled) {
+                return;
+            }
+            button.disabled = true;
+            fetch(url, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Accept": "application/json",
+                    "X-CSRFToken": csrfToken()
+                }
+            })
+                .then(parseResponse)
+                .then(function (data) {
+                    button.classList.toggle("is-active", !!data.active);
+                    const count = countSelector ? button.querySelector(countSelector) : null;
+                    if (count && typeof data.count !== "undefined") {
+                        count.textContent = data.count;
+                    }
+                    showToast(data.active ? "已保存操作" : "已取消操作");
+                })
+                .catch(function (error) {
+                    if (error.message === "请先登录") {
+                        openLoginDialog();
+                        return;
+                    }
+                    showToast(error.message);
+                })
+                .finally(function () {
+                    button.disabled = false;
+                });
+        }
+
+        if (promo && window.localStorage.getItem(promoKey) === "1") {
+            promo.hidden = true;
+        }
+
+        home.querySelectorAll("[data-blog-home-toast]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                showToast(button.dataset.blogHomeToast);
+            });
+        });
+
+        home.addEventListener("click", function (event) {
+            const dismiss = event.target.closest("[data-blog-home-dismiss]");
+            if (dismiss && promo) {
+                promo.hidden = true;
+                try {
+                    window.localStorage.setItem(promoKey, "1");
+                } catch (error) {
+                    // Dismiss still works for this page load.
+                }
+                return;
+            }
+
+            const followButton = event.target.closest("[data-blog-follow]");
+            if (followButton) {
+                const following = readFollowing();
+                const id = followButton.dataset.blogFollow;
+                if (following.has(id)) {
+                    following.delete(id);
+                    showToast("已取消关注");
+                } else {
+                    following.add(id);
+                    showToast("已关注作者");
+                }
+                writeFollowing(following);
+                syncFollowButtons();
+                return;
+            }
+
+            const likeButton = event.target.closest("[data-blog-home-like]");
+            if (likeButton) {
+                toggleHomeAction(likeButton, "[data-blog-home-like-count]");
+                return;
+            }
+
+            const bookmarkButton = event.target.closest("[data-blog-home-bookmark]");
+            if (bookmarkButton) {
+                toggleHomeAction(bookmarkButton);
+                return;
+            }
+
+            const moreButton = event.target.closest("[data-blog-home-more]");
+            if (moreButton) {
+                const menu = moreButton.parentElement.querySelector(".blog-home-more-menu");
+                if (!menu) {
+                    return;
+                }
+                const nextHidden = !menu.hidden;
+                closeMenus(menu);
+                menu.hidden = nextHidden;
+                moreButton.setAttribute("aria-expanded", String(!nextHidden));
+            }
+        });
+
+        document.addEventListener("click", function (event) {
+            if (!event.target.closest(".blog-home-more-wrap")) {
+                closeMenus();
+            }
+        });
+
+        syncFollowButtons();
+    }
+
+    function initEditor() {
+        const editor = document.querySelector("[data-blog-editor]");
+        if (!editor) {
+            return;
+        }
+        const uploadUrl = editor.dataset.uploadUrl;
+        const modeInput = editor.querySelector("#blogContentFormat");
+        const textarea = editor.querySelector("#blogContent");
+        const richEditor = editor.querySelector("[data-rich-editor]");
+        const status = editor.querySelector("[data-blog-editor-status]");
+        const markdownTools = editor.querySelector("[data-markdown-tools]");
+        const richTools = editor.querySelector("[data-rich-tools]");
+        const imageInput = editor.querySelector("[data-blog-image-input]");
+        let currentMode = modeInput.value || "markdown";
+
+        function showStatus(message, isError) {
+            if (!status) {
+                return;
+            }
+            status.textContent = message;
+            status.hidden = false;
+            status.classList.toggle("is-error", !!isError);
+            window.clearTimeout(showStatus.timer);
+            showStatus.timer = window.setTimeout(function () {
+                status.hidden = true;
+            }, isError ? 4200 : 2200);
+        }
+
+        function syncToTextarea() {
+            if (currentMode === "richtext" && richEditor && textarea) {
+                textarea.value = richEditor.innerHTML.trim();
+            }
+        }
+
+        function setMode(mode) {
+            currentMode = mode === "richtext" ? "richtext" : "markdown";
+            modeInput.value = currentMode;
+            editor.querySelectorAll("[data-blog-mode]").forEach(function (button) {
+                button.classList.toggle("is-active", button.dataset.blogMode === currentMode);
+            });
+            if (textarea) {
+                textarea.hidden = currentMode !== "markdown";
+            }
+            if (richEditor) {
+                richEditor.hidden = currentMode !== "richtext";
+                if (currentMode === "richtext" && !richEditor.innerHTML.trim() && textarea.value.trim()) {
+                    richEditor.textContent = textarea.value;
+                }
+            }
+            if (markdownTools) {
+                markdownTools.hidden = currentMode !== "markdown";
+            }
+            if (richTools) {
+                richTools.hidden = currentMode !== "richtext";
+            }
+        }
+
+        function insertIntoTextarea(text) {
+            if (!textarea) {
+                return;
+            }
+            const start = textarea.selectionStart || 0;
+            const end = textarea.selectionEnd || 0;
+            const before = textarea.value.slice(0, start);
+            const after = textarea.value.slice(end);
+            textarea.value = before + text + after;
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + text.length;
+        }
+
+        function wrapSelection(prefix, suffix, placeholder) {
+            if (!textarea) {
+                return;
+            }
+            const start = textarea.selectionStart || 0;
+            const end = textarea.selectionEnd || 0;
+            const selected = textarea.value.slice(start, end) || placeholder;
+            const replacement = prefix + selected + suffix;
+            textarea.value = textarea.value.slice(0, start) + replacement + textarea.value.slice(end);
+            textarea.focus();
+            textarea.selectionStart = start + prefix.length;
+            textarea.selectionEnd = start + prefix.length + selected.length;
+        }
+
+        function insertMarkdownSnippet(type) {
+            const snippets = {
+                bold: function () {
+                    wrapSelection("**", "**", "加粗文字");
+                },
+                italic: function () {
+                    wrapSelection("*", "*", "强调文字");
+                },
+                code: function () {
+                    wrapSelection("`", "`", "code");
+                },
+                quote: function () {
+                    insertIntoTextarea("\n> 引用内容\n");
+                },
+                list: function () {
+                    insertIntoTextarea("\n- 列表项\n- 列表项\n");
+                },
+                link: function () {
+                    wrapSelection("[", "](https://example.com)", "链接文字");
+                }
+            };
+            if (snippets[type]) {
+                snippets[type]();
+            }
+        }
+
+        function insertRichHtml(html) {
+            if (!richEditor) {
+                return;
+            }
+            richEditor.focus();
+            document.execCommand("insertHTML", false, html);
+            syncToTextarea();
+        }
+
+        function insertImage(data) {
+            if (currentMode === "richtext") {
+                insertRichHtml(data.html);
+            } else {
+                insertIntoTextarea("\n" + data.markdown + "\n");
+            }
+            showStatus("图片已上传并插入");
+        }
+
+        function uploadImage(file) {
+            if (!file || !uploadUrl) {
+                return Promise.resolve();
+            }
+            const formData = new FormData();
+            formData.append("image", file);
+            showStatus("正在上传图片...");
+            return fetch(uploadUrl, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Accept": "application/json",
+                    "X-CSRFToken": csrfToken()
+                },
+                body: formData
+            })
+                .then(parseResponse)
+                .then(insertImage)
+                .catch(function (error) {
+                    if (error.message === "请先登录") {
+                        openLoginDialog();
+                        return;
+                    }
+                    showStatus(error.message, true);
+                });
+        }
+
+        function handlePaste(event) {
+            const items = event.clipboardData && event.clipboardData.items;
+            if (!items) {
+                return;
+            }
+            for (let index = 0; index < items.length; index += 1) {
+                const item = items[index];
+                if (item.kind === "file" && item.type.indexOf("image/") === 0) {
+                    const file = item.getAsFile();
+                    if (file) {
+                        event.preventDefault();
+                        uploadImage(file);
+                        return;
+                    }
+                }
+            }
+        }
+
+        editor.querySelectorAll("[data-blog-mode]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                if (currentMode === "richtext") {
+                    syncToTextarea();
+                }
+                setMode(button.dataset.blogMode);
+            });
+        });
+
+        editor.querySelectorAll("[data-blog-insert]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                insertMarkdownSnippet(button.dataset.blogInsert);
+            });
+        });
+
+        editor.querySelectorAll("[data-rich-command]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                richEditor.focus();
+                document.execCommand(button.dataset.richCommand, false, button.dataset.richValue || null);
+                syncToTextarea();
+            });
+        });
+
+        editor.querySelectorAll("[data-rich-link]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                const url = window.prompt("输入链接地址");
+                if (!url) {
+                    return;
+                }
+                richEditor.focus();
+                document.execCommand("createLink", false, url);
+                syncToTextarea();
+            });
+        });
+
+        if (imageInput) {
+            imageInput.addEventListener("change", function () {
+                const file = imageInput.files && imageInput.files[0];
+                uploadImage(file).finally(function () {
+                    imageInput.value = "";
+                });
+            });
+        }
+        if (textarea) {
+            textarea.addEventListener("paste", handlePaste);
+        }
+        if (richEditor) {
+            richEditor.addEventListener("paste", handlePaste);
+            richEditor.addEventListener("input", syncToTextarea);
+        }
+        editor.addEventListener("submit", syncToTextarea);
+        setMode(currentMode);
+    }
+
+    initLoginPrompt();
+    initPostActions();
+    initCommentReplies();
+    initCopyLinks();
+    initBlogCodeBlocks();
+    initBlogHome();
+    initEditor();
+})();

@@ -1,0 +1,155 @@
+<script>
+    window.CODEMARK_ACCOUNT_CONFIG = {
+        sessionUrl: "{% url 'account_session' %}",
+        randomProfileUrl: "{% url 'account_random_profile' %}",
+        sendCodeUrl: "{% url 'account_send_code' %}",
+        registerUrl: "{% url 'account_register' %}",
+        loginUrl: "{% url 'account_login' %}",
+        logoutUrl: "{% url 'account_logout' %}",
+        profileUrl: "{% url 'account_profile' %}",
+        profilePageUrl: "{% url 'account_profile_page' %}",
+        loginMethods: {
+            emailPassword: {{ codemark_account.login_methods.email_password|yesno:"true,false" }},
+            emailCode: {{ codemark_account.login_methods.email_code|yesno:"true,false" }},
+            usernamePassword: {{ codemark_account.login_methods.username_password|yesno:"true,false" }},
+            defaultMode: "{{ codemark_account.login_methods.default|escapejs }}"
+        },
+        csrfToken: "{{ csrf_token|escapejs }}",
+        defaultAvatarUrl: "{{ codemark_account.default_avatar_url|escapejs }}"
+    };
+    window.CODEMARK_ACCOUNT_INITIAL = {
+        isAuthenticated: {{ codemark_account.is_authenticated|yesno:"true,false" }},
+        displayName: "{{ codemark_account.display_name|default_if_none:''|escapejs }}",
+        email: "{{ codemark_account.email|default_if_none:''|escapejs }}",
+        username: "{{ codemark_account.username|default_if_none:''|escapejs }}",
+        bio: "{{ codemark_account.bio|default_if_none:''|escapejs }}",
+        avatarUrl: "{{ codemark_account.avatar_url|escapejs }}",
+        canUseArticleApi: {{ codemark_account.can_use_article_api|yesno:"true,false" }},
+        membershipTier: "{{ codemark_account.membership_tier|default_if_none:''|escapejs }}",
+        membershipLabel: "{{ codemark_account.membership_label|default_if_none:''|escapejs }}"
+    };
+</script>
+
+<div class="account-toast" hidden data-account-toast></div>
+
+<div class="account-dialog-backdrop" hidden data-account-dialog>
+    <div class="account-dialog" role="dialog" aria-modal="true" aria-labelledby="accountDialogTitle">
+        <div class="account-dialog-header">
+            <div>
+                <h2 id="accountDialogTitle">CodeMark 账号</h2>
+                <p data-account-dialog-subtitle>
+                    {% if codemark_account.is_authenticated %}
+                        管理头像、昵称和个人简介
+                    {% else %}
+                        登录或注册后可逐步解锁个人功能
+                    {% endif %}
+                </p>
+            </div>
+            <button class="account-dialog-close" type="button" aria-label="关闭" data-account-close>
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="account-tabs" role="tablist" aria-label="账号操作">
+            <button class="account-tab{% if not codemark_account.is_authenticated %} is-active{% endif %}" type="button" data-account-tab="login"{% if codemark_account.is_authenticated %} hidden{% endif %}>登录</button>
+            <button class="account-tab" type="button" data-account-tab="register"{% if codemark_account.is_authenticated %} hidden{% endif %}>注册</button>
+        </div>
+
+        <form class="account-panel{% if not codemark_account.is_authenticated %} is-active{% endif %}" data-account-panel="login" data-account-login-form{% if codemark_account.is_authenticated %} hidden{% endif %}>
+            <input type="hidden" name="login_method" value="{% if codemark_account.login_methods.email_password or codemark_account.login_methods.username_password %}password{% else %}email_code{% endif %}" data-account-login-method>
+            {% if codemark_account.login_methods.email_code and codemark_account.login_methods.email_password or codemark_account.login_methods.email_code and codemark_account.login_methods.username_password %}
+                <div class="account-login-modebar" role="tablist" aria-label="登录方式">
+                    <span class="account-login-modebar-label">登录方式</span>
+                    <div class="account-login-mode-options">
+                        <button class="account-login-mode-choice" type="button" role="tab" data-account-login-mode="password">密码</button>
+                        <button class="account-login-mode-choice" type="button" role="tab" data-account-login-mode="email_code">验证码</button>
+                    </div>
+                </div>
+            {% endif %}
+            {% if codemark_account.login_methods.email_password or codemark_account.login_methods.username_password %}
+                <div class="account-login-panel" data-account-login-panel="password">
+                    <label class="account-field">
+                        <span>{% if codemark_account.login_methods.email_password and codemark_account.login_methods.username_password %}邮箱或用户名{% elif codemark_account.login_methods.email_password %}邮箱{% else %}用户名{% endif %}</span>
+                        <input name="identifier" type="{% if codemark_account.login_methods.email_password and not codemark_account.login_methods.username_password %}email{% else %}text{% endif %}" autocomplete="{% if codemark_account.login_methods.email_password and not codemark_account.login_methods.username_password %}email{% else %}username{% endif %}" required>
+                    </label>
+                    <label class="account-field">
+                        <span>密码</span>
+                        <input name="password" type="password" autocomplete="current-password" required>
+                    </label>
+                </div>
+            {% endif %}
+            {% if codemark_account.login_methods.email_code %}
+                <div class="account-login-panel" data-account-login-panel="email_code">
+                    <label class="account-field">
+                        <span>邮箱</span>
+                        <input name="email" type="email" autocomplete="email" required>
+                    </label>
+                    <label class="account-field">
+                        <span>邮箱验证码</span>
+                        <span class="account-code-row">
+                            <input name="code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
+                            <button class="account-secondary-btn" type="button" data-account-login-send-code>发送验证码</button>
+                        </span>
+                    </label>
+                </div>
+            {% endif %}
+            <button class="account-primary-btn" type="submit">登录</button>
+            <p class="account-inline-hint">还没有账号？<button type="button" data-account-switch-register>创建账号</button></p>
+        </form>
+
+        <form class="account-panel" data-account-panel="register" data-account-register-form{% if codemark_account.is_authenticated %} hidden{% endif %}>
+            <label class="account-field">
+                <span>邮箱</span>
+                <input name="email" type="email" autocomplete="email" required>
+            </label>
+            <div class="account-field">
+                <div class="account-field-heading">
+                    <label for="accountRegisterDisplayName">昵称</label>
+                    <button class="account-mini-action" type="button" data-account-random-profile="display_name" title="随机昵称">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M16 3h5v5"></path>
+                            <path d="M4 20 21 3"></path>
+                            <path d="M21 16v5h-5"></path>
+                            <path d="M15 15 21 21"></path>
+                            <path d="M4 4l5 5"></path>
+                        </svg>
+                        <span>随机</span>
+                    </button>
+                </div>
+                <input id="accountRegisterDisplayName" name="display_name" type="text" maxlength="40" autocomplete="nickname" placeholder="可选">
+            </div>
+            <div class="account-field">
+                <div class="account-field-heading">
+                    <label for="accountRegisterBio">个人简介</label>
+                    <button class="account-mini-action" type="button" data-account-random-profile="bio" title="随机个人简介">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M16 3h5v5"></path>
+                            <path d="M4 20 21 3"></path>
+                            <path d="M21 16v5h-5"></path>
+                            <path d="M15 15 21 21"></path>
+                            <path d="M4 4l5 5"></path>
+                        </svg>
+                        <span>随机</span>
+                    </button>
+                </div>
+                <textarea id="accountRegisterBio" name="bio" maxlength="160" rows="3" placeholder="可选"></textarea>
+            </div>
+            <label class="account-field">
+                <span>密码</span>
+                <input name="password" type="password" autocomplete="new-password" minlength="8" required>
+            </label>
+            <label class="account-field">
+                <span>邮箱验证码</span>
+                <span class="account-code-row">
+                    <input name="code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
+                    <button class="account-secondary-btn" type="button" data-account-send-code>发送验证码</button>
+                </span>
+            </label>
+            <button class="account-primary-btn" type="submit">注册并登录</button>
+            <p class="account-inline-hint">已经有账号？<button type="button" data-account-switch-login>去登录</button></p>
+        </form>
+    </div>
+</div>
